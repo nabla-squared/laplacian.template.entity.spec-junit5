@@ -1,0 +1,28 @@
+package {{project.namespace}}
+
+import laplacian.gradle.task.generate.ExecutionContext
+import laplacian.gradle.task.generate.ProjectEntryResolver
+import {{project.namespace}}.gradle.{{upper-camel project.name}}ModelEntryResolver
+  {{#each entities.top_level_in_namespace as |top_level|}}
+import {{project.namespace}}.model.{{upper-camel top_level.name}}List
+  {{/each}}
+import java.io.File
+
+class {{upper-camel project.name}}ModelTestContext {
+    {{#each entities.top_level_in_namespace as |top_level|}}
+    val {{lower-camel (plural top_level.name)}}: {{upper-camel top_level.name}}List
+        get() = executionContext.currentModel["{{lower-underscore (plural top_level.name)}}"] as {{upper-camel top_level.name}}List
+    {{/each}}
+    var executionContext: ExecutionContext = ExecutionContext().also { context ->
+        val projectModel = File("laplacian-module.yml")
+        if (projectModel.exists()) context.addModel(projectModel)
+        context.addModelEntryResolver(
+            {{upper-camel project.name}}ModelEntryResolver()
+        )
+    }
+
+    fun models(vararg models: String): {{upper-camel project.name}}ModelTestContext {
+        executionContext.addModel(*models).build()
+        return this
+    }
+}

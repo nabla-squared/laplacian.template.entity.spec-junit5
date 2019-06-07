@@ -1,0 +1,120 @@
+{{#define "test_context_class"}}{{upper-camel project.name}}ModelTestContext{{/define}}
+package {{entity.namespace}}.model
+
+import {{project.namespace}}.{{test_context_class}}
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertAll
+
+class {{upper-camel entity.class_name}}Test {
+
+    {{#if entity.owner}}
+    companion object {
+        {{#each entity.ownership_hierarchy as |ownership|}}
+        {{define "owner" ownership.entity}}
+        {{#if owner.examples}}
+        {{define "example" owner.examples.[0]}}
+        val {{upper-underscore owner.identifier}}_EXAMPLE = """
+        |{{plural owner.identifier}}:
+        |- {{yaml example "        |  "}}
+        """.trimMargin()
+        {{/if}}
+        {{/each}}
+    }
+    {{/if}}
+
+    {{#each entity.examples as |example|}}
+    {{#define "suffix"}}{{#if (not (eq @index 0))}} - alternative case {{@index}}{{/if}}{{/define}}
+    @Test
+    fun `each properties of a {{entity.name}} model returns the appropriate value{{suffix}}`() {
+        val context = {{test_context_class}}().models(
+        {{#each entity.ownership_hierarchy as |ownership|}}
+        {{define "owner" ownership.entity}}
+        {{#if owner.examples}}
+        {{upper-underscore ownership.entity.identifier}}_EXAMPLE,
+        {{/if}}
+        {{/each}}
+        """
+        {{#if entity.top_level}}
+        |{{plural entity.identifier}}:
+        {{/if}}
+        {{#each entity.ownership_hierarchy as |ownership|}}
+        {{define "owner" ownership.entity}}
+        {{#if @first}}
+        |{{plural owner.identifier}}:
+        {{/if}}
+        {{#each owner.primary_keys as |pk|}}
+        {{#define "header"}}{{#if @first}}- {{else}}  {{/if}}{{/define}}
+        |{{pad}}{{header}}{{pk.property_name}}: {{pk.examples.[0]}}
+        {{/each}}
+        |{{pad}}  {{ownership.property_name}}:
+        {{#define "../../pad"}}{{pad}}  {{/define}}
+        {{/each}}
+        {{#define "shift"}}        |{{pad}}  {{/define}}
+        |{{pad}}- {{yaml example shift}}
+        """.trimMargin())
+        val model = context
+            {{#each entity.ownership_hierarchy as |ownership|}}
+            {{define "owner" ownership.entity}}
+            {{#if @first}}
+            .{{lower-camel (plural owner.identifier)}}[0]
+            {{/if}}
+            .{{ownership.property_name}}[0]
+            {{/each}}
+            {{#if entity.top_level}}
+            .{{lower-camel (plural entity.identifier)}}[0]
+            {{/if}}
+            as {{entity.class_name}}
+
+        assertAll(
+            {{#each entity.properties as |p|}}
+            { assertEquals({{trim p.example_literals.[0]}}, model.{{p.property_name}}) }{{#unless @last}},{{/unless}}
+            {{/each}}
+        )
+    }
+    {{/each}}
+
+    {{#each entity.properties as |property|}}
+    {{#each property.behaviors as |behavior|}}
+    @Test
+    fun `the {{property.name}} returns an appropriate value`() {
+        val context = {{test_context_class}}().models(
+        {{#each entity.ownership_hierarchy as |ownership|}}
+        {{define "owner" ownership.entity}}
+        {{#if owner.examples}}
+        {{upper-underscore owner.identifier}} = """
+        |{{example}}
+        """.trimMargin()
+        {{/if}}
+        {{/each}}
+
+        $UPPER_HIRARCHY
+        {{#if entity.top_level}}
+        |{{lower-camel (plural entity.identifier)}}:
+        {{/if}}
+        {{define "header" "- "}}
+        {{#each behavior.given_properties as |v|}}
+        |{{pad}}{{header}}{{@key}}: {{trim v}}
+        {{define "../header" "  "}}
+        {{/each}}
+        """.trimMargin())
+        val model = context
+            {{#each entity.ownership_hierarchy as |ownership|}}
+            {{define "owner" ownership.entity}}
+            {{#if @first}}
+            .{{lower-camel (plural owner.identifier)}}[0]
+            {{/if}}
+            .{{ownership.property_name}}[0]
+            {{/each}}
+            {{#if entity.top_level}}
+            .{{lower-camel (plural entity.identifier)}}[0]
+            {{/if}}
+            as {{entity.class_name}}
+
+        assertAll(
+            { assertEquals({{trim behavior.then_returns}}, model.{{property.property_name}}) }
+        )
+    }
+    {{/each}}
+    {{/each}}
+}
