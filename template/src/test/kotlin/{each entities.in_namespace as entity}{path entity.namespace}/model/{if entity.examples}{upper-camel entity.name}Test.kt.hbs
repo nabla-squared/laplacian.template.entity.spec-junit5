@@ -24,6 +24,7 @@ class {{upper-camel entity.class_name}}Test {
     {{/if}}
 
     {{#each entity.examples as |example|}}
+    {{define "example_index" @index}}
     {{#define "suffix"}}{{#if (not (eq @index 0))}} - alternative case {{@index}}{{/if}}{{/define}}
     @Test
     fun `each properties of a {{entity.name}} model returns the appropriate value{{suffix}}`() {
@@ -45,7 +46,7 @@ class {{upper-camel entity.class_name}}Test {
         {{/if}}
         {{#each owner.primary_keys as |pk|}}
         {{#define "header"}}{{#if @first}}- {{else}}  {{/if}}{{/define}}
-        |{{pad}}{{header}}{{pk.property_name}}: {{pk.examples.[0]}}
+        |{{pad}}{{header}}{{pk.property_name}}: {{pk.example_values.[0]}}
         {{/each}}
         |{{pad}}  {{ownership.property_name}}:
         {{#define "../../pad"}}{{pad}}  {{/define}}
@@ -56,65 +57,47 @@ class {{upper-camel entity.class_name}}Test {
         val model = context
             {{#each entity.ownership_hierarchy as |ownership|}}
             {{define "owner" ownership.entity}}
+            {{#define "finder"}}
+            {{#each ownership.reference_entity.primary_keys as |pk|}}
+                it.{{pk.property_name}} == {{literal pk.example_values.[0]}}{{#unless @last}} &&{{/unless}}
+            {{/each}}
+            {{/define}}
             {{#if @first}}
-            .{{lower-camel (plural owner.identifier)}}[0]
+            .{{lower-camel (plural owner.identifier)}}.find {
+            {{#each owner.primary_keys as |pk|}}
+                it.{{pk.property_name}} == {{literal pk.example_values.[0]}}{{#unless @last}} &&{{/unless}}
+            {{/each}}
+            }!!
             {{/if}}
-            .{{ownership.property_name}}[0]
+            .{{ownership.property_name}}.find {
+                {{#if @last}}
+                {{#each entity.primary_keys as |pk|}}
+                it.{{pk.property_name}} == {{literal (lookup (lookup entity.examples example_index) pk.name)}}{{#unless @last}} &&{{/unless}}
+                {{/each}}
+                {{else}}
+                {{finder}}
+                {{/if}}
+            }!!
             {{/each}}
             {{#if entity.top_level}}
-            .{{lower-camel (plural entity.identifier)}}[0]
+            .{{lower-camel (plural entity.identifier)}}.find {
+                {{#each entity.primary_keys as |pk|}}
+                it.{{pk.property_name}} == {{literal (lookup (lookup entity.examples example_index) pk.name)}}{{#unless @last}} &&{{/unless}}
+                {{/each}}
+            }!!
             {{/if}}
             as {{entity.class_name}}
 
         assertAll(
+            {{#trim chars=","}}
             {{#each entity.properties as |p|}}
-            { assertEquals({{trim p.example_literals.[0]}}, model.{{p.property_name}}) }{{#unless @last}},{{/unless}}
+            {{#if (contains-key p.example_values example_index)}}
+            {{define "example" (lookup p.example_values example_index)}}
+            { assertEquals({{literal example}}, model.{{p.property_name}}) },
+            {{/if}}
             {{/each}}
+            {{/trim}}
         )
     }
-    {{/each}}
-
-    {{#each entity.properties as |property|}}
-    {{#each property.behaviors as |behavior|}}
-    @Test
-    fun `the {{property.name}} returns an appropriate value`() {
-        val context = {{test_context_class}}().models(
-        {{#each entity.ownership_hierarchy as |ownership|}}
-        {{define "owner" ownership.entity}}
-        {{#if owner.examples}}
-        {{upper-underscore owner.identifier}} = """
-        |{{example}}
-        """.trimMargin()
-        {{/if}}
-        {{/each}}
-
-        $UPPER_HIRARCHY
-        {{#if entity.top_level}}
-        |{{lower-camel (plural entity.identifier)}}:
-        {{/if}}
-        {{define "header" "- "}}
-        {{#each behavior.given_properties as |v|}}
-        |{{pad}}{{header}}{{@key}}: {{trim v}}
-        {{define "../header" "  "}}
-        {{/each}}
-        """.trimMargin())
-        val model = context
-            {{#each entity.ownership_hierarchy as |ownership|}}
-            {{define "owner" ownership.entity}}
-            {{#if @first}}
-            .{{lower-camel (plural owner.identifier)}}[0]
-            {{/if}}
-            .{{ownership.property_name}}[0]
-            {{/each}}
-            {{#if entity.top_level}}
-            .{{lower-camel (plural entity.identifier)}}[0]
-            {{/if}}
-            as {{entity.class_name}}
-
-        assertAll(
-            { assertEquals({{trim behavior.then_returns}}, model.{{property.property_name}}) }
-        )
-    }
-    {{/each}}
     {{/each}}
 }
