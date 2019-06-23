@@ -47,7 +47,7 @@ class {{upper-camel entity.class_name}}Test {
     }
 
     val {{plural top_level_entity.identifier}}: {{top_level_entity.class_name}}List
-        get() = {{test_context_class}}().models(MODEL_YAML).{{plural top_level_entity.identifier}}
+        get() = {{test_context_class}}().models(MODEL_YAML).{{lower-camel (plural top_level_entity.identifier)}}
 
 
     {{#each entity.examples as |example|}}
