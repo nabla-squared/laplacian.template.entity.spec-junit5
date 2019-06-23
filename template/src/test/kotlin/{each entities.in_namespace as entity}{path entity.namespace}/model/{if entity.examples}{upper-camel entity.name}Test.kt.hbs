@@ -1,4 +1,5 @@
 {{#define "test_context_class"}}{{upper-camel project.name}}ModelTestContext{{/define}}
+{{define "top_level_entity" (not entity.owner yes=entity no=entity.root_owner)}}
 package {{entity.namespace}}.model
 
 import {{project.namespace}}.{{test_context_class}}
@@ -8,8 +9,8 @@ import org.junit.jupiter.api.assertAll
 
 class {{upper-camel entity.class_name}}Test {
 
-    {{#if entity.owner}}
     companion object {
+        {{#if entity.owner}}
         {{#each entity.ownership_hierarchy as |ownership|}}
         {{define "owner" ownership.entity}}
         {{#if owner.examples}}
@@ -20,22 +21,8 @@ class {{upper-camel entity.class_name}}Test {
         """.trimMargin()
         {{/if}}
         {{/each}}
-    }
-    {{/if}}
-
-    {{#each entity.examples as |example|}}
-    {{define "example_index" @index}}
-    {{#define "suffix"}}{{#if (not (eq @index 0))}} - alternative case {{@index}}{{/if}}{{/define}}
-    @Test
-    fun `each properties of a {{entity.name}} model returns the appropriate value{{suffix}}`() {
-        val context = {{test_context_class}}().models(
-        {{#each entity.ownership_hierarchy as |ownership|}}
-        {{define "owner" ownership.entity}}
-        {{#if owner.examples}}
-        {{upper-underscore ownership.entity.identifier}}_EXAMPLE,
         {{/if}}
-        {{/each}}
-        """
+        val MODEL_YAML = """
         {{#if entity.top_level}}
         |{{plural entity.identifier}}:
         {{/if}}
@@ -51,17 +38,25 @@ class {{upper-camel entity.class_name}}Test {
         |{{pad}}  {{ownership.property_name}}:
         {{#define "../../pad"}}{{pad}}  {{/define}}
         {{/each}}
+        {{#each entity.examples as |example|}}
+        |
         {{#define "shift"}}        |{{pad}}  {{/define}}
         |{{pad}}- {{yaml example shift}}
-        """.trimMargin())
-        val model = context
+        {{/each}}
+        """.trimMargin()
+    }
+
+    val {{plural top_level_entity.identifier}}: {{top_level_entity.class_name}}List
+        get() = {{test_context_class}}().models(MODEL_YAML).{{plural top_level_entity.identifier}}
+
+
+    {{#each entity.examples as |example|}}
+    {{define "example_index" @index}}
+    {{#define "suffix"}}{{#if (not (eq @index 0))}} - alternative case {{@index}}{{/if}}{{/define}}
+    @Test
+    fun `each properties of a {{entity.name}} model returns the appropriate value{{suffix}}`() {
+        val model = {{plural top_level_entity.identifier}}.find {
             {{#each entity.ownership_hierarchy as |ownership|}}
-            {{define "owner" ownership.entity}}
-            {{#define "finder"}}
-            {{#each ownership.reference_entity.primary_keys as |pk|}}
-                it.{{pk.property_name}} == {{literal pk.example_values.[0]}}{{#unless @last}} &&{{/unless}}
-            {{/each}}
-            {{/define}}
             {{#if @first}}
             .{{lower-camel (plural owner.identifier)}}.find {
             {{#each owner.primary_keys as |pk|}}
@@ -69,6 +64,12 @@ class {{upper-camel entity.class_name}}Test {
             {{/each}}
             }!!
             {{/if}}
+            {{define "owner" ownership.entity}}
+            {{#define "finder"}}
+            {{#each ownership.reference_entity.primary_keys as |pk|}}
+                it.{{pk.property_name}} == {{literal pk.example_values.[0]}}{{#unless @last}} &&{{/unless}}
+            {{/each}}
+            {{/define}}
             .{{ownership.property_name}}.find {
                 {{#if @last}}
                 {{#each entity.primary_keys as |pk|}}
@@ -80,7 +81,6 @@ class {{upper-camel entity.class_name}}Test {
             }!!
             {{/each}}
             {{#if entity.top_level}}
-            .{{lower-camel (plural entity.identifier)}}.find {
                 {{#each entity.primary_keys as |pk|}}
                 it.{{pk.property_name}} == {{literal (lookup (lookup entity.examples example_index) pk.name)}}{{#unless @last}} &&{{/unless}}
                 {{/each}}
@@ -99,5 +99,23 @@ class {{upper-camel entity.class_name}}Test {
             {{/trim}}
         )
     }
+    {{/each}}
+
+    {{#each entity.relationships as |relationship|}}
+    {{#each relationship.examples as |example|}}
+    @Test
+    fun `{{#if example.title}}{{example.title}}{{else}}example of the relationship {{relationship.name}} {{@index_1}}{{/if}}`() {
+        {{#if (eq (trim example.then_returns) "null")}}
+        assertNull(
+            {{shift example.when 12}}
+        )
+        {{else}}
+        assertEquals(
+            {{shift example.when 12}},
+            {{shift example.then_returns 12}}
+        )
+        {{/if}}
+    }
+    {{/each}}
     {{/each}}
 }
