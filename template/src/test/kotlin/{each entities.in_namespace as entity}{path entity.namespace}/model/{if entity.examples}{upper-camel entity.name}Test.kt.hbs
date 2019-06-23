@@ -107,11 +107,11 @@ class {{upper-camel entity.class_name}}Test {
     fun `{{#if example.title}}{{example.title}}{{else}}example of the relationship {{relationship.name}} {{@index_1}}{{/if}}`() {
         {{#if (eq (trim example.then_returns) "null")}}
         assertNull(
-            {{shift example.when 12}}
+            {{shift example.when_invoking 12}}
         )
         {{else}}
         assertEquals(
-            {{shift example.when 12}},
+            {{shift example.when_invoking 12}},
             {{shift example.then_returns 12}}
         )
         {{/if}}
