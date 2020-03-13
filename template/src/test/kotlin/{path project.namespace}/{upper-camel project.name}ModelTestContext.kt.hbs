@@ -1,7 +1,6 @@
 package {{project.namespace}}
 
 import laplacian.gradle.task.generate.ExecutionContext
-import laplacian.gradle.task.generate.ProjectEntryResolver
 import {{project.namespace}}.gradle.{{upper-camel project.name}}ModelEntryResolver
   {{#each entities.top_level_in_namespace as |top_level|}}
 import {{project.namespace}}.model.{{upper-camel top_level.name}}List
