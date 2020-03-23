@@ -7,6 +7,9 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertAll
 
+/**
+ * An test case for {{upper-camel entity.class_name}}.
+ */
 class {{upper-camel entity.class_name}}Test {
 
     companion object {
@@ -93,8 +96,10 @@ class {{upper-camel entity.class_name}}Test {
             {{#each entity.properties as |p|}}
             {{#if (contains-key p.example_values example_index)}}
             {{define "example" (lookup p.example_values example_index)}}
-            { assertEquals({{literal example}}, model.{{p.property_name}}) },
+            {{else}}
+            {{define "example" (lookup (lookup entity.examples example_index) p.name)}}
             {{/if}}
+            { assertEquals({{literal example}}, model.{{p.property_name}}) },
             {{/each}}
             {{/trim}}
         )
